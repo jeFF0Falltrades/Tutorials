@@ -8,7 +8,7 @@ It will create a copy of the Roller Coaster Tycoon executable file, and it will 
 # Video Tutorial
 For a full walkthrough of how this patch was created, and a general introduction to reverse engineering and game patching, see the accompanying video:
 
-[Reverse Engineering/Game Patching Tutorial: Full Resolution in Roller Coaster Tycoon (1999) with Ghidra, x64dbg, and Python](https://placeholder.com)
+[Reverse Engineering/Game Patching Tutorial: Full Res Roller Coaster Tycoon with Ghidra+x64dbg+Python](https://youtu.be/cwBoUuy4nGc)
 
 # Installation
 ## Python
