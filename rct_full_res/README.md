@@ -106,7 +106,7 @@ optional arguments:
 
 The `auto` command be used to patch the primary Roller Coaster Tycoon executable automatically for either full screen play or windowed play (where windowed mode is patched to maximize the window to the specified resolution):
 
-**Patching for Full Screeen Mode**
+**Patching for Full Screen Mode**
 ```
 $ python rct_patch.py auto -t ~/Downloads/RCT/RCT.EXE  1920 1080 -o ~/Downloads/RCT/rct_patched.exe
 
