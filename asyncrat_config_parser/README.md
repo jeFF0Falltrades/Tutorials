@@ -4,7 +4,7 @@
 
 ## Usage
 ```
-usage: ap.py [-h] [-d] file_paths [file_paths ...]
+usage: asyncrat_config_parser.py [-h] [-d] file_paths [file_paths ...]
 
 positional arguments:
   file_paths   One or more AsyncRAT payload file paths (deobfuscated)
@@ -16,7 +16,7 @@ optional arguments:
 
 ## Example Input/Output
 ```
-$ python3 ap.py ReverseMe.exe | python -m json.tool
+$ python3 asyncrat_config_parser.py ReverseMe.exe | python -m json.tool
 {
     "aes_key": "40766aef6f9d6980c001babeef7020446eff2ef31cf910cab59d5429d7a89c37",
     "aes_salt": "bfeb1e56fbcd973bb219022430a57843003d5644d21e62b9d4f180e7e6c33941",
