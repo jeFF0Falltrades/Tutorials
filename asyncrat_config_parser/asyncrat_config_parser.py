@@ -19,7 +19,7 @@
 # feedback or issues.
 #
 # Homepage with Video Tutorial:
-# https://github.com/jeFF0Falltrades/Game-Patches/tree/master/asyncrat_config_parser
+# https://github.com/jeFF0Falltrades/Tutorials/tree/master/asyncrat_config_parser
 #
 # YARA rule to find samples:
 # https://github.com/jeFF0Falltrades/YARA-Signatures/blob/master/Broadbased/asyncrat.yar
@@ -85,7 +85,7 @@ class AsyncRATParser:
     STREAM_IDENTIFIER_STORAGE = b'#~'
     STREAM_IDENTIFIER_STRINGS = b'#Strings'
     STREAM_IDENTIFIER_US = b'#US'
-    TABLE_FIELDS = 'Field'
+    TABLE_FIELD = 'Field'
     TABLE_FIELD_RVA = 'FieldRVA'
 
     # This map assists in calculating offsets for Field and FieldRVA entries.
@@ -347,7 +347,7 @@ class AsyncRATParser:
                 f'Key: {decoded_k}, Value: {decrypted_config[decoded_k]}')
         return decrypted_config
 
-    # Given a field ID from the fields table, returns the relative virtual
+    # Given a field ID from the Field table, returns the relative virtual
     # address of the field, e.g.:
     #
     # Field RVA: 0x0400001D
@@ -468,19 +468,19 @@ class AsyncRATParser:
     def get_fields_map(self):
         logger.debug('Extracting the fields map...')
         fields_map = []
-        fields_start = self.get_table_start(self.TABLE_FIELDS)
+        fields_start = self.get_table_start(self.TABLE_FIELD)
         strings_start = self.get_stream_start(self.STREAM_IDENTIFIER_STRINGS)
         cur_offset = fields_start
-        for x in range(self.table_map[self.TABLE_FIELDS]['num_rows']):
+        for x in range(self.table_map[self.TABLE_FIELD]['num_rows']):
             try:
                 field_offset = self.bytes_to_int(self.data[cur_offset +
                                                            2:cur_offset + 4])
                 field_value = self.get_string_from_offset(strings_start +
                                                           field_offset)
-                cur_offset += self.table_map[self.TABLE_FIELDS]['row_size']
+                cur_offset += self.table_map[self.TABLE_FIELD]['row_size']
             except:
                 raise self.ASyncRATParserError(
-                    'Error parsing Fields table\nCheck for obfuscation')
+                    'Error parsing Field table\nCheck for obfuscation')
             logger.debug(f'Found field: {field_offset}, {field_value}')
             fields_map.append((field_value, field_offset))
         logger.debug('Successfully extracted fields map')
