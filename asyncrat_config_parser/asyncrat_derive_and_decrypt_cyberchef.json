@@ -1,0 +1,142 @@
+[
+    {
+        "op": "Register",
+        "args": [
+            "(.+)",
+            true,
+            false,
+            false
+        ]
+    },
+    {
+        "op": "Register",
+        "args": [
+            "---\\n(.+)",
+            true,
+            false,
+            true
+        ]
+    },
+    {
+        "op": "Find / Replace",
+        "args": [
+            {
+                "option": "Regex",
+                "string": ".*"
+            },
+            "$R0",
+            false,
+            false,
+            true,
+            true
+        ]
+    },
+    {
+        "op": "Derive PBKDF2 key",
+        "args": [
+            {
+                "option": "Base64",
+                "string": "$R0"
+            },
+            256,
+            50000,
+            "SHA1",
+            {
+                "option": "Hex",
+                "string": "bfeb1e56fbcd973bb219022430a57843003d5644d21e62b9d4f180e7e6c33941"
+            }
+        ]
+    },
+    {
+        "op": "Register",
+        "args": [
+            "([\\s\\S]*)",
+            true,
+            false,
+            false
+        ]
+    },
+    {
+        "op": "Find / Replace",
+        "args": [
+            {
+                "option": "Regex",
+                "string": ".*"
+            },
+            "$R1",
+            false,
+            false,
+            true,
+            false
+        ]
+    },
+    {
+        "op": "Fork",
+        "args": [
+            "\\n",
+            "\\n",
+            false
+        ]
+    },
+    {
+        "op": "From Base64",
+        "args": [
+            "A-Za-z0-9+/=",
+            true
+        ]
+    },
+    {
+        "op": "To Hex",
+        "args": [
+            "None",
+            0
+        ]
+    },
+    {
+        "op": "Register",
+        "args": [
+            ".{64}(.{32})(.+)",
+            true,
+            false,
+            false
+        ]
+    },
+    {
+        "op": "Find / Replace",
+        "args": [
+            {
+                "option": "Regex",
+                "string": ".*"
+            },
+            "$R4",
+            false,
+            false,
+            true,
+            false
+        ]
+    },
+    {
+        "op": "AES Decrypt",
+        "args": [
+            {
+                "option": "Hex",
+                "string": "$R2"
+            },
+            {
+                "option": "Hex",
+                "string": "$R3"
+            },
+            "CBC",
+            "Hex",
+            "Raw",
+            {
+                "option": "Hex",
+                "string": ""
+            },
+            {
+                "option": "Hex",
+                "string": ""
+            }
+        ]
+    }
+]

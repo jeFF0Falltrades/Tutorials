@@ -56,9 +56,8 @@ from cryptography.hazmat.primitives.padding import PKCS7
 from cryptography.hazmat.primitives.hashes import SHA1
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from json import dumps
-from logging import basicConfig, DEBUG, getLogger
+from logging import basicConfig, DEBUG, exception, getLogger, WARNING
 from re import DOTALL, findall, search
-from traceback import format_exc
 
 logger = getLogger(__name__)
 
@@ -260,10 +259,10 @@ class AsyncRATParser:
         try:
             padded_text = decryptor.update(ciphertext) + decryptor.finalize()
             unpadded_text = unpadder.update(padded_text) + unpadder.finalize()
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
                 f'Error decrypting ciphertext {ciphertext} with IV {iv} and key {self.aes_key}'
-            )
+            ) from e
         logger.debug(f'Decryption result: {unpadded_text}')
         return unpadded_text
 
@@ -294,9 +293,9 @@ class AsyncRATParser:
             order = self.BYTE_ORDER
         try:
             result = int.from_bytes(bytes, byteorder=order)
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error parsing int from value: {bytes}')
+                f'Error parsing int from value: {bytes}') from e
         return result
 
     # Decodes a bytes object to a Unicode string, using UTF-16LE for byte values
@@ -308,9 +307,9 @@ class AsyncRATParser:
                 result = bytes.decode('utf-16le')
             else:
                 result = bytes.decode('utf-8')
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error decoding bytes object to Unicode: {bytes}')
+                f'Error decoding bytes object to Unicode: {bytes}') from e
         return result
 
     # Given a translated config containing config field names and encrypted
@@ -332,7 +331,8 @@ class AsyncRATParser:
             # Check if base64-encoded string
             try:
                 decoded_val = b64decode(v)
-            except:
+            except Exception as e:
+
                 b64_exception = True
             # If it was not base64-encoded, or if it is less than our min length
             # for ciphertext, leave the value as it is
@@ -367,14 +367,14 @@ class AsyncRATParser:
             cur_offset += self.table_map[self.TABLE_FIELD_RVA]['row_size']
         if field_rva is None:
             raise self.ASyncRATParserError(
-                f'Could not find FieldRVA corresponding to ID {id}')
+                f'Could not find FieldRVA corresponding to ID {id}') from e
         return field_rva
 
     # Extracts the AES key from the payload using a regex pattern which looks
     # for the initialization of the key - specifically, the following ops:
     #
-    # ldsfld	string Client.Settings::Key
-    # newobj	instance void Client.Algorithm.Aes256::.ctor(string)
+    # ldsfld    string Client.Settings::Key
+    # newobj    instance void Client.Algorithm.Aes256::.ctor(string)
     def get_aes_key(self):
         logger.debug('Extracting encoded AES key value...')
         # Important to use DOTALL here (with all regexes to be safe) as because
@@ -400,9 +400,9 @@ class AsyncRATParser:
         logger.debug(f'AES encoded key value found: {key_val}')
         try:
             passphrase = b64decode(key_val)
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error decoding key value {key_val}')
+                f'Error decoding key value {key_val}') from e
         logger.debug(f'AES passphrase found: {passphrase}')
         kdf = PBKDF2HMAC(SHA1(),
                          length=self.AES_KEY_LENGTH,
@@ -410,9 +410,9 @@ class AsyncRATParser:
                          iterations=self.AES_ITERATIONS)
         try:
             key = kdf.derive(passphrase)
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error deriving key from passphrase {passphrase}')
+                f'Error deriving key from passphrase {passphrase}') from e
         logger.debug(f'AES key derived: {key.hex()}')
         return key
 
@@ -420,9 +420,9 @@ class AsyncRATParser:
     # for the operations occurring directly before the initialization of the
     # salt byte array - specifically, the following ops:
     #
-    # newarr	[mscorlib]System.Byte
+    # newarr    [mscorlib]System.Byte
     # dup
-    # ldtoken	valuetype '<PrivateImplementationDetails>'...
+    # ldtoken    valuetype '<PrivateImplementationDetails>'...
     def get_aes_salt(self):
         logger.debug('Extracting AES salt value...')
         pre_offset = search(self.PATTERN_PRE_SALT_RVA, self.data, DOTALL)
@@ -478,9 +478,9 @@ class AsyncRATParser:
                 field_value = self.get_string_from_offset(strings_start +
                                                           field_offset)
                 cur_offset += self.table_map[self.TABLE_FIELD]['row_size']
-            except:
+            except Exception as e:
                 raise self.ASyncRATParserError(
-                    'Error parsing Field table\nCheck for obfuscation')
+                    'Error parsing Field table\nCheck for obfuscation') from e
             logger.debug(f'Found field: {field_offset}, {field_value}')
             fields_map.append((field_value, field_offset))
         logger.debug('Successfully extracted fields map')
@@ -492,9 +492,9 @@ class AsyncRATParser:
         try:
             with open(file_path, 'rb') as fp:
                 data = fp.read()
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error reading from path: {file_path}')
+                f'Error reading from path: {file_path}') from e
         logger.debug(f'Successfully read data')
         return data
 
@@ -534,10 +534,10 @@ class AsyncRATParser:
     def get_string_from_offset(self, str_offset, delimiter=b'\0'):
         try:
             result = self.data[str_offset:].partition(delimiter)[0]
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
                 f'Could not extract string value from offset {str_offset} with delimiter {delimiter}'
-            )
+            ) from e
         return result
 
     # Creates a copy of the table map template above and populates it with
@@ -573,9 +573,9 @@ class AsyncRATParser:
                     cur_offset += 4
                 else:
                     table_map[table]['num_rows'] = 0
-        except:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                'Could not get counts of rows from tables')
+                'Could not get counts of rows from tables') from e
         logger.debug('Successfully extracted table map')
         return table_map
 
@@ -618,9 +618,10 @@ class AsyncRATParser:
                 logger.debug(
                     f'Found config value: {field_name} = {field_value}')
                 translated_config[field_name] = field_value
-            except:
+            except Exception as e:
                 raise self.ASyncRATParserError(
-                    f'Error translating RVAs {us_rva} and {strings_rva}')
+                    f'Error translating RVAs {us_rva} and {strings_rva}'
+                ) from e
         logger.debug('Successfully translated configuration')
         return translated_config
 
@@ -648,7 +649,8 @@ class AsyncRATParser:
         # #Strings stream base to get the file offset of the string
         try:
             val_offset = self.fields_map[val_index][1] + strings_start
-        except:
+        except Exception as e:
+
             return None
         strings_val = self.get_string_from_offset(val_offset)
         return strings_val
@@ -700,10 +702,11 @@ if __name__ == "__main__":
     args = ap.parse_args()
     if args.debug:
         basicConfig(level=DEBUG)
+    else:
+        basicConfig(level=WARNING)
     for fp in args.file_paths:
         try:
             print(AsyncRATParser(fp).report())
-        except:
-            print(f'Exception occurred for {fp}')
-            print(format_exc())
+        except Exception as e:
+            exception(f'Exception occurred for {fp}', exc_info=True)
             continue
