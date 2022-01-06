@@ -331,8 +331,7 @@ class AsyncRATParser:
             # Check if base64-encoded string
             try:
                 decoded_val = b64decode(v)
-            except Exception as e:
-
+            except Exception:
                 b64_exception = True
             # If it was not base64-encoded, or if it is less than our min length
             # for ciphertext, leave the value as it is
@@ -649,9 +648,9 @@ class AsyncRATParser:
         # #Strings stream base to get the file offset of the string
         try:
             val_offset = self.fields_map[val_index][1] + strings_start
-        except Exception as e:
-
-            return None
+        except Exception:
+            raise self.ASyncRATParserError(
+                f'Could not retrieve string from RVA {strings_rva}')
         strings_val = self.get_string_from_offset(val_offset)
         return strings_val
 
