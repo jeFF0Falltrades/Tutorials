@@ -15,6 +15,7 @@
 # for you IAW with the license below.
 #
 # Please submit Issues and Pull Requests for bugs to the project homepage below.
+#
 # Feel free to also reach out to me on Twitter @jeFF0Falltrades with any
 # feedback or issues.
 #
@@ -27,7 +28,7 @@
 #
 # MIT License
 #
-# Copyright (c) 2021 Jeff Archer
+# Copyright (c) 2022 Jeff Archer
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -66,26 +67,16 @@ logger = getLogger(__name__)
 # decrypting (unobfuscated) AsyncRAT payload configurations
 class AsyncRATParser:
 
-    AES_BLOCK_SIZE = 128
-    AES_ITERATIONS = 50000
-    AES_KEY_LENGTH = 32
-    AES_SALT_LENGTH = 32
-    BYTE_ORDER = 'little'
-    OPCODE_LDSTR = b'\x72'
     OPCODE_RET = b'\x2a'
+    PATTERN_CLR_METADATA_START = b'\x42\x53\x4a\x42'
     PATTERN_CONFIG_START = b'((?:\x72.{9}){9})'
-    PATTERN_AES_KEY = b'\x7e(.\x00\x00\x04)\x73'
-    PATTERN_METADATA_START = b'\x42\x53\x4a\x42'
     PATTERN_PARSED_RVAS = b'\x72(.{4})\x80(.{4})'
-    PATTERN_PRE_SALT_RVA = b'\x8d.{4}\x25\xd0'
     RVA_STRINGS_BASE = 0x04000000
     RVA_US_BASE = 0x70000000
-    SECTION_IDENTIFIER_TEXT = b'.text'
     STREAM_IDENTIFIER_STORAGE = b'#~'
     STREAM_IDENTIFIER_STRINGS = b'#Strings'
     STREAM_IDENTIFIER_US = b'#US'
     TABLE_FIELD = 'Field'
-    TABLE_FIELD_RVA = 'FieldRVA'
 
     # This map assists in calculating offsets for Field and FieldRVA entries.
     #
@@ -101,10 +92,10 @@ class AsyncRATParser:
     #
     # If you are interested in generalizing this map to examine other tables,
     # I recommend checking out dnSpy's algorithm for calculating table row size
-    # in general here:
+    # for the remaining tables here:
     #
     # https://github.com/dnSpy/dnSpy/blob/2b6dcfaf602fb8ca6462b8b6237fdfc0c74ad994/dnSpy/dnSpy/Hex/Files/DotNet/DotNetTableSizes.cs
-    TABLE_MAP = {
+    MAP_TABLE = {
         'Module': {
             'row_size': 10
         },
@@ -231,7 +222,278 @@ class AsyncRATParser:
         'Reserved 3F': {}
     }
 
-    # Custom exception class for parser exceptions
+    # This nested class encapsulates all operations around parsing AES
+    # decryption data from the file (e.g. key, salt, iterations, sizes) and
+    # exposes a decrypt() method that our parent parser can use.
+    #
+    # TBF, it is not necessary to encapsulate these into an inner class like
+    # this, but I think it helps organize the code a bit better.
+    class ASyncRATAESDecryptor:
+        OPCODE_LDSTR = b'\x72'
+        OPCODE_LDTOKEN = b'\xd0'
+        PATTERN_AES_KEY = b'\x7e(.\x00\x00\x04)\x73'
+        PATTERN_AES_KEY_AND_BLOCK_SIZE = b'\x07\x20(.{4})\x6f.{4}\x07\x20(.{4})'
+        PATTERN_AES_METADATA = b'\x73.{4}\x7a\x03\x7e(.{4})'
+        PATTERN_AES_SALT_INIT = b'\x80%b\x2a'
+        SECTION_IDENTIFIER_TEXT = b'.text'
+        TABLE_FIELD_RVA = 'FieldRVA'
+
+        # We pass our parser in as parent_parser so that we can access all of
+        # its attributes and methods from our inner class via self.parent
+        def __init__(self, parent_parser):
+            self.parent = parent_parser
+            self.aes_metadata_flag = self.get_aes_metadata_flag()
+            self.key_size, self.block_size = self.get_aes_key_and_block_size()
+            self.iterations = self.get_aes_iterations()
+            self.salt = self.get_aes_salt()
+            # Call this last as we need the above attributes to derive the key
+            self.key = self.get_aes_key()
+
+        # Given an initialization vector and ciphertext, creates a Cipher
+        # object with the AES key and specified IV and decrypts the ciphertext
+        def decrypt(self, iv, ciphertext):
+            logger.debug(
+                f'Decrypting {ciphertext} with key {self.key} and IV {iv}...')
+            aes_cipher = Cipher(AES(self.key), CBC(iv))
+            decryptor = aes_cipher.decryptor()
+            # Use a PKCS7 unpadder to remove padding from decrypted value
+            # https://cryptography.io/en/latest/hazmat/primitives/padding/
+            unpadder = PKCS7(self.block_size).unpadder()
+            try:
+                padded_text = decryptor.update(
+                    ciphertext) + decryptor.finalize()
+                unpadded_text = unpadder.update(
+                    padded_text) + unpadder.finalize()
+            except Exception as e:
+                raise self.parent.ASyncRATParserError(
+                    f'Error decrypting ciphertext {ciphertext} with IV {iv} and key {self.key}'
+                ) from e
+            logger.debug(f'Decryption result: {unpadded_text}')
+            return unpadded_text
+
+        # Given a field ID from the Field table, returns the relative virtual
+        # address of the field, e.g.:
+        #
+        # Field RVA: 0x0400001D
+        # Field ID = 0x1D
+        # FieldRVA Entry for Field ID: 0x1D : 0x2050
+        # Final RVA: 0x2050
+        def field_id_to_field_rva(self, id):
+            fieldrva_table_start = self.parent.get_table_start(
+                self.TABLE_FIELD_RVA)
+            field_rva = None
+            matched = False
+            # Start at the beginning of the FieldRVA table
+            cur_offset = fieldrva_table_start
+            for x in range(
+                    self.parent.table_map[self.TABLE_FIELD_RVA]['num_rows']):
+                try:
+                    field_id = self.parent.bytes_to_int(
+                        self.parent.data[cur_offset + 4:cur_offset + 6])
+                    field_rva = self.parent.bytes_to_int(
+                        self.parent.data[cur_offset:cur_offset + 4])
+                    # Break if our matching ID is found in this row
+                    if field_id == id:
+                        matched = True
+                        break
+                    # Otherwise, keep moving through the table
+                    cur_offset += self.parent.table_map[
+                        self.TABLE_FIELD_RVA]['row_size']
+                except Exception as e:
+                    raise self.parent.ASyncRATParserError(
+                        f'Error parsing FieldRVA corresponding to ID {id}'
+                    ) from e
+            # If we never found our match, raise an exception
+            if not matched:
+                raise self.parent.ASyncRATParserError(
+                    f'Could not find FieldRVA corresponding to ID {id}')
+            return field_rva
+
+        # Given an RVA from the FieldRVA table, calculates the file offset of
+        # the field value by subtracting the relative virtual address of the
+        # .text section and adding the file offset of the .text section, e.g.
+        #
+        # Field RVA: 0x2050
+        # Text section RVA: 0x2000
+        # Text section file offset: 0x0200
+        # Field offset = 0x2050 - 0x2000 + 0x0200
+        #             = 0x0250
+        def field_rva_to_offset(self, field_rva):
+            text_section_metadata_offset = self.parent.data.find(
+                self.SECTION_IDENTIFIER_TEXT)
+            text_section_rva = self.parent.data[
+                text_section_metadata_offset +
+                12:text_section_metadata_offset + 16]
+            text_section_offset = self.parent.data[
+                text_section_metadata_offset +
+                20:text_section_metadata_offset + 24]
+            field_offset = field_rva - self.parent.bytes_to_int(
+                text_section_rva) + self.parent.bytes_to_int(
+                    text_section_offset)
+            return field_offset
+
+        # Extracts the AES iteration number from the payload
+        def get_aes_iterations(self):
+            logger.debug('Extracting AES iterations...')
+            iterations_offset_start = self.aes_metadata_flag.end() + 1
+            iterations_val_packed = self.parent.data[
+                iterations_offset_start:iterations_offset_start + 2]
+            iterations = self.parent.bytes_to_int(iterations_val_packed)
+            logger.debug(f'Found AES iteration number of {iterations}')
+            return iterations
+
+        # Identifies the initialization of the AES256 object in the payload by
+        # looking for the following ops:
+        #
+        # newobj	instance void [mscorlib]System.ArgumentException...
+        # throw
+        # ldarg.1
+        # ldsfld	uint8[] Client.Algorithm.Aes256::Salt
+        def get_aes_metadata_flag(self):
+            logger.debug('Extracting AES metadata flag...')
+            # Important to use DOTALL here (and with all regex ops to be safe)
+            # as we are working with bytes, and if we do not set this, and the
+            # byte sequence contains a byte that equates to a newline
+            # (\n or 0x0A), the search will fail
+            md_flag_offset = search(self.PATTERN_AES_METADATA,
+                                    self.parent.data, DOTALL)
+            if md_flag_offset is None:
+                raise self.parent.ASyncRATParserError(
+                    'Could not identify AES metadata flag')
+            logger.debug(
+                f'AES metadata flag found at offset {hex(md_flag_offset.start())}'
+            )
+            return md_flag_offset
+
+        # Extracts the AES key from the payload using a regex pattern which
+        # looks for the initialization of the key - specifically, the following
+        # ops:
+        #
+        # ldsfld    string Client.Settings::Key
+        # newobj    instance void Client.Algorithm.Aes256::.ctor(string)
+        def get_aes_key(self):
+            logger.debug('Extracting encoded AES key value...')
+            hit = search(self.PATTERN_AES_KEY, self.parent.data, DOTALL)
+            if hit is None:
+                raise self.parent.ASyncRATParserError(
+                    'Could not find AES key pattern')
+
+            # Since we already have a map of all fields, and have translated
+            # config values (including Key) into translated_config, to find the
+            # key value, we take the RVA of the key, subtract the #Strings
+            # stream base RVA, and then subtract 1 to get the key's index in
+            # the field map.
+            #
+            # We then take the key field name from the field map, and look up
+            # its value in our translated config, e.g.:
+            #
+            # Key RVA: 0x04000007
+            # Key Field Map Index = 0x04000007 - 0x04000000 - 1 = 6
+            # Key Field Name Value = fields_map[6]
+            # Key Value = translated_config[fields_map[6]]
+            key_field_offset = self.parent.bytes_to_int(
+                hit.groups()[0]) - self.parent.RVA_STRINGS_BASE - 1
+            key_field_name = self.parent.fields_map[key_field_offset][0]
+            key_val = self.parent.translated_config[key_field_name]
+            logger.debug(f'AES encoded key value found: {key_val}')
+            try:
+                passphrase = b64decode(key_val)
+            except Exception as e:
+                raise self.parent.ASyncRATParserError(
+                    f'Error decoding key value {key_val}') from e
+            logger.debug(f'AES passphrase found: {passphrase}')
+            kdf = PBKDF2HMAC(SHA1(),
+                             length=self.key_size,
+                             salt=self.salt,
+                             iterations=self.iterations)
+            try:
+                key = kdf.derive(passphrase)
+            except Exception as e:
+                raise self.parent.ASyncRATParserError(
+                    f'Error deriving key from passphrase {passphrase}') from e
+            logger.debug(f'AES key derived: {key.hex()}')
+            return key
+
+        # Extracts the AES key and block size from the payload
+        def get_aes_key_and_block_size(self):
+            logger.debug('Extracting AES key and block size...')
+            hit = search(self.PATTERN_AES_KEY_AND_BLOCK_SIZE, self.parent.data,
+                         DOTALL)
+            if hit is None:
+                raise self.parent.ASyncRATParserError(
+                    f'Could not extract AES key or block size')
+            # Convert key size from bits to bytes by dividing by 8
+            # Note use of // instead of / to ensure integer output, not float
+            key_size = self.parent.bytes_to_int(hit.groups()[0]) // 8
+            block_size = self.parent.bytes_to_int(hit.groups()[1])
+            logger.debug(
+                f'Found key size {key_size} and block size {block_size}')
+            return key_size, block_size
+
+        # Extracts the AES salt from the payload, accounting for both hardcoded
+        # salt byte arrays, and salts derived from hardcoded strings
+        def get_aes_salt(self):
+            logger.debug('Extracting AES salt value...')
+            # The Salt RVA was captured in our metadata flag pattern
+            aes_salt_rva = self.aes_metadata_flag.groups()[0]
+            # Use % to insert our salt RVA into our match pattern
+            # This pattern will then find the salt initialization ops,
+            # specifically:
+            #
+            # stsfld	uint8[] Client.Algorithm.Aes256::Salt
+            # ret
+            aes_salt_initialization = self.parent.data.find(
+                self.PATTERN_AES_SALT_INIT % aes_salt_rva)
+            if aes_salt_initialization == -1:
+                raise self.parent.ASyncRATParserError(
+                    'Could not identify AES salt initialization')
+
+            # Look at opcode used to initialize the salt to decide how to
+            # proceed on extracting the salt value (start of pattern - 10 bytes)
+            salt_op_offset = aes_salt_initialization - 10
+            # Need to use bytes([int]) here to properly convert from int to byte
+            # string for our comparison below
+            salt_op = bytes([self.parent.data[salt_op_offset]])
+
+            # Get the salt RVA from the 4 bytes following the initialization op
+            salt_strings_rva_packed = self.parent.data[salt_op_offset +
+                                                       1:salt_op_offset + 5]
+            salt_strings_rva = self.parent.bytes_to_int(
+                salt_strings_rva_packed)
+
+            # If the op is a ldstr op, just get the bytes value of the string
+            # being used to initialize the salt
+            if salt_op == self.OPCODE_LDSTR:
+                salt_encoded = self.parent.us_rva_to_us_val(salt_strings_rva)
+                # We use decode_bytes() here to get the salt string without any
+                # null bytes (because it's stored as UTF-16LE), then convert it
+                # back to bytes
+                salt = self.parent.decode_bytes(salt_encoded).encode()
+            # If the op is a ldtoken operation, we need to get the salt byte
+            # array value from the FieldRVA table
+            elif salt_op == self.OPCODE_LDTOKEN:
+                salt = self.get_aes_salt_ldtoken_method(
+                    salt_strings_rva, salt_op_offset)
+            else:
+                raise self.parent.ASyncRATParserError(
+                    f'Unknown salt opcode found: {salt_op.hex()}')
+            logger.debug(f'Found salt value: {salt.hex()}')
+            return salt
+
+        # Derives the AES salt by loading the RVA of the salt from
+        # the FieldRVA table, converting it to a file offset, and
+        # reading the salt value from that offset
+        def get_aes_salt_ldtoken_method(self, salt_strings_rva,
+                                        salt_op_offset):
+            salt_size = self.parent.data[salt_op_offset - 7]
+            # Salt field ID = Salt strings RVA - #Strings RVA base
+            salt_field_id = salt_strings_rva - self.parent.RVA_STRINGS_BASE
+            salt_field_rva = self.field_id_to_field_rva(salt_field_id)
+            salt_offset = self.field_rva_to_offset(salt_field_rva)
+            salt_value = self.parent.data[salt_offset:salt_offset + salt_size]
+            return salt_value
+
+    # Custom exception class to provide detailed exceptions from the parser
     class ASyncRATParserError(Exception):
         pass
 
@@ -242,55 +504,12 @@ class AsyncRATParser:
         self.fields_map = self.get_fields_map()
         self.config_addr_map = self.get_config_address_map()
         self.translated_config = self.get_translated_config()
-        self.aes_salt = self.get_aes_salt()
-        self.aes_key = self.get_aes_key()
+        self.aes_decryptor = self.ASyncRATAESDecryptor(self)
         self.config = self.decrypt_config()
 
-    # Given an initialization vector and ciphertext, creates a Cipher object
-    # with the AES key and IV and decrypts the ciphertext
-    def aes_decrypt(self, iv, ciphertext):
-        logger.debug(
-            f'Decrypting {ciphertext} with key {self.aes_key} and IV {iv}...')
-        aes_cipher = Cipher(AES(self.aes_key), CBC(iv))
-        decryptor = aes_cipher.decryptor()
-        # Use a PKCS7 unpadder to remove padding from decrypted value
-        # https://cryptography.io/en/latest/hazmat/primitives/padding/
-        unpadder = PKCS7(self.AES_BLOCK_SIZE).unpadder()
-        try:
-            padded_text = decryptor.update(ciphertext) + decryptor.finalize()
-            unpadded_text = unpadder.update(padded_text) + unpadder.finalize()
-        except Exception as e:
-            raise self.ASyncRATParserError(
-                f'Error decrypting ciphertext {ciphertext} with IV {iv} and key {self.aes_key}'
-            ) from e
-        logger.debug(f'Decryption result: {unpadded_text}')
-        return unpadded_text
-
-    # Given the RVA for the AES salt from the FieldRVA table, calculates the
-    # file offset of the salt value by subtracting the relative virtual address
-    # of the .text section and adding the offset of the .text section, e.g.
-    #
-    # Salt RVA: 0x2050
-    # Text section RVA: 0x2000
-    # Text section offset: 0x0200
-    # Salt offset = 0x2050 - 0x2000 + 0x0200
-    #             = 0x0250
-    def aes_salt_rva_to_offset(self, salt_rva):
-        text_section_metadata_offset = self.data.find(
-            self.SECTION_IDENTIFIER_TEXT)
-        text_section_rva = self.data[text_section_metadata_offset +
-                                     12:text_section_metadata_offset + 16]
-        text_section_offset = self.data[text_section_metadata_offset +
-                                        20:text_section_metadata_offset + 24]
-        salt_translated_offset = salt_rva - self.bytes_to_int(
-            text_section_rva) + self.bytes_to_int(text_section_offset)
-        return salt_translated_offset
-
-    # Converts a bytes object to an int object using the specified byteorder
+    # Converts a bytes object to an int object using the specified byte order
     # (little-endian by default)
-    def bytes_to_int(self, bytes, order=None):
-        if order is None:
-            order = self.BYTE_ORDER
+    def bytes_to_int(self, bytes, order='little'):
         try:
             result = int.from_bytes(bytes, byteorder=order)
         except Exception as e:
@@ -313,7 +532,7 @@ class AsyncRATParser:
         return result
 
     # Given a translated config containing config field names and encrypted
-    # and/or base64-encoded field values, decodes and decrypts encrypted fields
+    # and/or base64-encoded field values, decodes and decrypts encrypted values
     # and returns the decrypted config
     def decrypt_config(self):
         logger.debug('Decrypting config...')
@@ -338,112 +557,20 @@ class AsyncRATParser:
             if b64_exception or len(decoded_val) < 48:
                 continue
             # Otherwise, extract the IV from the 16 bytes after the HMAC
-            # and the ciphertext from the rest of the data after the IV
+            # (first 32 bytes) and the ciphertext from the rest of the data
+            # after the IV, and run the decryption
             (iv, ciphertext) = decoded_val[32:48], decoded_val[48:]
             decrypted_config[decoded_k] = self.decode_bytes(
-                self.aes_decrypt(iv, ciphertext))
+                self.aes_decryptor.decrypt(iv, ciphertext))
             logger.debug(
                 f'Key: {decoded_k}, Value: {decrypted_config[decoded_k]}')
+        logger.debug('Successfully decrypted config')
         return decrypted_config
-
-    # Given a field ID from the Field table, returns the relative virtual
-    # address of the field, e.g.:
-    #
-    # Field RVA: 0x0400001D
-    # Field ID = 0x1D
-    # FieldRVA Entry for Field ID: 0x1D : 0x2050
-    # Final RVA: 0x2050
-    def field_id_to_field_rva(self, id):
-        fieldrva_table_start = self.get_table_start(self.TABLE_FIELD_RVA)
-        field_rva = None
-        cur_offset = fieldrva_table_start
-        for x in range(self.table_map[self.TABLE_FIELD_RVA]['num_rows']):
-            field_id = self.bytes_to_int(self.data[cur_offset + 4:cur_offset +
-                                                   6])
-            field_rva = self.bytes_to_int(self.data[cur_offset:cur_offset + 4])
-            if field_id == id:
-                break
-            cur_offset += self.table_map[self.TABLE_FIELD_RVA]['row_size']
-        if field_rva is None:
-            raise self.ASyncRATParserError(
-                f'Could not find FieldRVA corresponding to ID {id}') from e
-        return field_rva
-
-    # Extracts the AES key from the payload using a regex pattern which looks
-    # for the initialization of the key - specifically, the following ops:
-    #
-    # ldsfld    string Client.Settings::Key
-    # newobj    instance void Client.Algorithm.Aes256::.ctor(string)
-    def get_aes_key(self):
-        logger.debug('Extracting encoded AES key value...')
-        # Important to use DOTALL here (with all regexes to be safe) as because
-        # we are working with bytes, if we do not set this, and the byte
-        # sequence contains a special character (\n, \r, etc.), the search
-        # will fail
-        hit = search(self.PATTERN_AES_KEY, self.data, DOTALL)
-        if hit is None:
-            raise self.ASyncRATParserError('Could not find AES key pattern')
-
-        # Since we already have a map of all fields, and have translated their
-        # names into translated_config, to find the key value we take the RVA
-        # of the key, subtract the #Strings stream base RVA, and then subtract
-        # 1 to get the key's value in the field map, e.g.:
-        #
-        # Key RVA: 0x04000007
-        # Key Field Map Index = 0x04000007 - 0x04000000 - 1
-        # Key Field Name Value = fields_map[6]
-        # Key Value = translated_config[fields_map[6]]
-        key_field_offset = self.bytes_to_int(
-            hit.groups()[0]) - self.RVA_STRINGS_BASE - 1
-        key_val = self.translated_config[self.fields_map[key_field_offset][0]]
-        logger.debug(f'AES encoded key value found: {key_val}')
-        try:
-            passphrase = b64decode(key_val)
-        except Exception as e:
-            raise self.ASyncRATParserError(
-                f'Error decoding key value {key_val}') from e
-        logger.debug(f'AES passphrase found: {passphrase}')
-        kdf = PBKDF2HMAC(SHA1(),
-                         length=self.AES_KEY_LENGTH,
-                         salt=self.aes_salt,
-                         iterations=self.AES_ITERATIONS)
-        try:
-            key = kdf.derive(passphrase)
-        except Exception as e:
-            raise self.ASyncRATParserError(
-                f'Error deriving key from passphrase {passphrase}') from e
-        logger.debug(f'AES key derived: {key.hex()}')
-        return key
-
-    # Extracts the AES salt from the payload using a regex pattern which looks
-    # for the operations occurring directly before the initialization of the
-    # salt byte array - specifically, the following ops:
-    #
-    # newarr    [mscorlib]System.Byte
-    # dup
-    # ldtoken    valuetype '<PrivateImplementationDetails>'...
-    def get_aes_salt(self):
-        logger.debug('Extracting AES salt value...')
-        pre_offset = search(self.PATTERN_PRE_SALT_RVA, self.data, DOTALL)
-        if pre_offset is None:
-            raise self.ASyncRATParserError('Could not identify AES salt')
-
-        # Salt RVA is in the last 4 bytes after the end of the ops in the regex
-        salt_field_rva = self.data[pre_offset.end():pre_offset.end() + 4]
-        salt_field_id = self.bytes_to_int(
-            salt_field_rva) - self.RVA_STRINGS_BASE
-
-        # Translate Field identifier to FieldRVA using FieldRVA table
-        salt_field_rva = self.field_id_to_field_rva(salt_field_id)
-        # Calculate file offset by finding location relative to .text section
-        salt_offset = self.aes_salt_rva_to_offset(salt_field_rva)
-
-        salt_value = self.data[salt_offset:salt_offset + self.AES_SALT_LENGTH]
-        logger.debug(f'Found AES salt value: {salt_value.hex()}')
-        return salt_value
 
     # Searches for the AsyncRAT configuration section in the Settings module,
     # and attempts to extract the RVAs of the config field names and values
+    #
+    # Specifically, looks for ldstr used >= 9 times in a row
     def get_config_address_map(self):
         logger.debug('Extracting the config address map...')
         config_mappings = []
@@ -451,13 +578,17 @@ class AsyncRATParser:
         if hit is None:
             raise self.ASyncRATParserError('Could not find start of config')
         config_start = hit.start()
+        # Configuration ends with ret operation, so we get string using the ret
+        # opcode (0x2A) as our terminating char
         parsed_ops = self.get_string_from_offset(config_start, self.OPCODE_RET)
+        # Split the field name RVAs from the field value RVAs in our parsed ops
         parsed_rvas = findall(self.PATTERN_PARSED_RVAS, parsed_ops, DOTALL)
         for (us_rva, string_rva) in parsed_rvas:
             config_value_rva = self.bytes_to_int(us_rva)
             config_name_rva = self.bytes_to_int(string_rva)
             logger.debug(
-                f'Found config item: ({config_value_rva}, {config_name_rva})')
+                f'Found config item: ({hex(config_value_rva)}, {hex(config_name_rva)})'
+            )
             config_mappings.append((config_value_rva, config_name_rva))
         logger.debug('Successfully extracted config address map')
         return config_mappings
@@ -465,10 +596,11 @@ class AsyncRATParser:
     # Extracts the Field table of the assembly, mapping the value of each
     # field from the #Strings stream to its offset in the Field table
     def get_fields_map(self):
-        logger.debug('Extracting the fields map...')
+        logger.debug('Extracting fields map...')
         fields_map = []
         fields_start = self.get_table_start(self.TABLE_FIELD)
         strings_start = self.get_stream_start(self.STREAM_IDENTIFIER_STRINGS)
+        # Start at the beginning of the Field table
         cur_offset = fields_start
         for x in range(self.table_map[self.TABLE_FIELD]['num_rows']):
             try:
@@ -476,16 +608,17 @@ class AsyncRATParser:
                                                            2:cur_offset + 4])
                 field_value = self.get_string_from_offset(strings_start +
                                                           field_offset)
+                # Proceed to next row
                 cur_offset += self.table_map[self.TABLE_FIELD]['row_size']
             except Exception as e:
                 raise self.ASyncRATParserError(
-                    'Error parsing Field table\nCheck for obfuscation') from e
-            logger.debug(f'Found field: {field_offset}, {field_value}')
+                    'Error parsing Field table') from e
+            logger.debug(f'Found field: {hex(field_offset)}, {field_value}')
             fields_map.append((field_value, field_offset))
         logger.debug('Successfully extracted fields map')
         return fields_map
 
-    # Given a file path, reads in and stores binary contents from that path
+    # Given a file path, reads in and returns binary contents from that path
     def get_file_data(self, file_path):
         logger.debug(f'Reading contents from: {file_path}')
         try:
@@ -511,7 +644,7 @@ class AsyncRATParser:
     # Finds the start of the Common Language Runtime (CLR) metadata header
     # using the metadata start flag (0x424a5342)
     def get_metadata_header_offset(self):
-        hit = self.data.find(self.PATTERN_METADATA_START)
+        hit = self.data.find(self.PATTERN_CLR_METADATA_START)
         if hit == -1:
             raise self.ASyncRATParserError(
                 'Could not find start of CLR metadata header')
@@ -535,7 +668,7 @@ class AsyncRATParser:
             result = self.data[str_offset:].partition(delimiter)[0]
         except Exception as e:
             raise self.ASyncRATParserError(
-                f'Could not extract string value from offset {str_offset} with delimiter {delimiter}'
+                f'Could not extract string value from offset {hex(str_offset)} with delimiter {delimiter}'
             ) from e
         return result
 
@@ -548,7 +681,7 @@ class AsyncRATParser:
         # Ensure we use copy() here because, if not, every newly instantiated
         # AsyncRATParser object will have the same table map, and changes to
         # one will impact all others
-        table_map = self.TABLE_MAP.copy()
+        table_map = self.MAP_TABLE.copy()
         storage_stream_offset = self.get_stream_start(
             self.STREAM_IDENTIFIER_STORAGE)
         # Table row counts start 24 bytes after storage stream start
@@ -565,10 +698,9 @@ class AsyncRATParser:
                 # Table Present = m_maskvalid AND (2^table index)
                 if mask_valid & (2**list(table_map.keys()).index(table)):
                     row_count_packed = self.data[cur_offset:cur_offset + 4]
-                    row_count_unpacked = self.bytes_to_int(row_count_packed)
-                    table_map[table]['num_rows'] = row_count_unpacked
-                    logger.debug(
-                        f'Found {row_count_unpacked} rows for table {table}')
+                    row_count = self.bytes_to_int(row_count_packed)
+                    table_map[table]['num_rows'] = row_count
+                    logger.debug(f'Found {row_count} rows for table {table}')
                     cur_offset += 4
                 else:
                     table_map[table]['num_rows'] = 0
@@ -584,8 +716,9 @@ class AsyncRATParser:
         storage_stream_offset = self.get_stream_start(
             self.STREAM_IDENTIFIER_STORAGE)
         # Table Start = Table Stream Start + 4 bytes for the row size of each
-        # table present in the assembly
-        #             = (24 + storage stream start) + (4 * each table present in the assembly)
+        #               table present in the assembly
+        #             = (24 + Storage stream start) + (4 * each table present
+        #               in the assembly)
         tables_start_offset = storage_stream_offset + 24 + (4 * len([
             table for table in self.table_map
             if self.table_map[table]['num_rows'] > 0
@@ -596,7 +729,7 @@ class AsyncRATParser:
             # Break if we have found our table
             if table == table_name:
                 break
-            # If we no longer find 'row_size', we are passed the point we should
+            # If we no longer find 'row_size', we are past the point we should
             # be, at least for our parser, as that means we've passed the
             # FieldRVA table
             elif 'row_size' not in self.table_map[table]:
@@ -629,8 +762,8 @@ class AsyncRATParser:
     def report(self):
         result_dict = {
             'file_path': self.file_path,
-            'aes_key': self.aes_key.hex(),
-            'aes_salt': self.aes_salt.hex(),
+            'aes_key': self.aes_decryptor.key.hex(),
+            'aes_salt': self.aes_decryptor.salt.hex(),
             'config': self.config
         }
         return dumps(result_dict)
@@ -648,9 +781,9 @@ class AsyncRATParser:
         # #Strings stream base to get the file offset of the string
         try:
             val_offset = self.fields_map[val_index][1] + strings_start
-        except Exception:
+        except Exception as e:
             raise self.ASyncRATParserError(
-                f'Could not retrieve string from RVA {strings_rva}')
+                f'Could not retrieve string from RVA {strings_rva}') from e
         strings_val = self.get_string_from_offset(val_offset)
         return strings_val
 
@@ -659,6 +792,7 @@ class AsyncRATParser:
     def us_rva_to_us_val(self, us_rva):
         us_start = self.get_stream_start(self.STREAM_IDENTIFIER_US)
         # Strings in the #US stream are prefaced with 1-2 length bytes
+        #
         # If the length of the string is >= 128 bytes, 2 bytes will be used
         # to indicate length, and the first byte's most significant bit will be
         # set.
@@ -666,10 +800,10 @@ class AsyncRATParser:
         # So we first check if the first length byte & 0x80 (1000 0000) is 1.
         #
         # If so, then this indicates we are dealing with a long string, and we
-        # grab the size from the 2 length bytes
+        # grab the size from 2 length bytes instead of 1.
         #
         # If not, then we can assume there is only 1 length byte to read from
-        # and then skip over to get to the string
+        # and then skip over it to get to the string
         length_byte_offset = us_rva - self.RVA_US_BASE + us_start
         if int(self.data[length_byte_offset]) & 0x80:
             val_offset = 2
