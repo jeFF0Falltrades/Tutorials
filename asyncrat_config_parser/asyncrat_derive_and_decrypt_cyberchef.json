@@ -2,31 +2,8 @@
     {
         "op": "Register",
         "args": [
-            "(.+)",
+            "(.+?)\\n(.+)",
             true,
-            false,
-            false
-        ]
-    },
-    {
-        "op": "Register",
-        "args": [
-            "---\\n(.+)",
-            true,
-            false,
-            true
-        ]
-    },
-    {
-        "op": "Find / Replace",
-        "args": [
-            {
-                "option": "Regex",
-                "string": ".*"
-            },
-            "$R0",
-            false,
-            false,
             true,
             true
         ]
@@ -61,12 +38,12 @@
         "args": [
             {
                 "option": "Regex",
-                "string": ".*"
+                "string": ".+"
             },
             "$R1",
             false,
             false,
-            true,
+            false,
             false
         ]
     },
@@ -106,12 +83,12 @@
         "args": [
             {
                 "option": "Regex",
-                "string": ".*"
+                "string": ".+"
             },
             "$R4",
             false,
             false,
-            true,
+            false,
             false
         ]
     },
