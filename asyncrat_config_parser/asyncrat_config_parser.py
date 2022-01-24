@@ -50,6 +50,7 @@
 
 from argparse import ArgumentParser
 from base64 import b64decode
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.ciphers import Cipher
 from cryptography.hazmat.primitives.ciphers.algorithms import AES
 from cryptography.hazmat.primitives.ciphers.modes import CBC
@@ -254,7 +255,9 @@ class AsyncRATParser:
         def decrypt(self, iv, ciphertext):
             logger.debug(
                 f'Decrypting {ciphertext} with key {self.key} and IV {iv}...')
-            aes_cipher = Cipher(AES(self.key), CBC(iv))
+            aes_cipher = Cipher(AES(self.key),
+                                CBC(iv),
+                                backend=default_backend())
             decryptor = aes_cipher.decryptor()
             # Use a PKCS7 unpadder to remove padding from decrypted value
             # https://cryptography.io/en/latest/hazmat/primitives/padding/
@@ -402,10 +405,13 @@ class AsyncRATParser:
                 raise self.parent.ASyncRATParserError(
                     f'Error decoding key value {key_val}') from e
             logger.debug(f'AES passphrase found: {passphrase}')
+            # The backend parameter is optional in newer versions of the
+            # cryptography library, but we keep it here for compatibility
             kdf = PBKDF2HMAC(SHA1(),
                              length=self.key_size,
                              salt=self.salt,
-                             iterations=self.iterations)
+                             iterations=self.iterations,
+                             backend=default_backend())
             try:
                 key = kdf.derive(passphrase)
             except Exception as e:
