@@ -2,6 +2,9 @@
 ## YouTube Video
 * Placeholder
 
+## YARA Rule for Hunting
+* https://github.com/jeFF0Falltrades/YARA-Signatures/blob/master/Broadbased/asyncrat.yar
+
 ## Usage
 ```
 usage: asyncrat_config_parser.py [-h] [-d] file_paths [file_paths ...]
