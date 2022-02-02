@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 #
 # asyncrat_config_parser.py
 #
@@ -70,7 +70,7 @@ class AsyncRATParser:
 
     OPCODE_RET = b'\x2a'
     PATTERN_CLR_METADATA_START = b'\x42\x53\x4a\x42'
-    PATTERN_CONFIG_START = b'((?:\x72.{9}){9})'
+    PATTERN_CONFIG_START = b'(\x72.{9}){9}'
     PATTERN_PARSED_RVAS = b'\x72(.{4})\x80(.{4})'
     RVA_STRINGS_BASE = 0x04000000
     RVA_US_BASE = 0x70000000
@@ -232,7 +232,7 @@ class AsyncRATParser:
     class ASyncRATAESDecryptor:
         OPCODE_LDSTR = b'\x72'
         OPCODE_LDTOKEN = b'\xd0'
-        PATTERN_AES_KEY = b'\x7e(.\x00\x00\x04)\x73'
+        PATTERN_AES_KEY = b'\x7e(.{3}\x04)\x73'
         PATTERN_AES_KEY_AND_BLOCK_SIZE = b'\x07\x20(.{4})\x6f.{4}\x07\x20(.{4})'
         PATTERN_AES_METADATA = b'\x73.{4}\x7a\x03\x7e(.{4})'
         PATTERN_AES_SALT_INIT = b'\x80%b\x2a'
@@ -254,7 +254,8 @@ class AsyncRATParser:
         # object with the AES key and specified IV and decrypts the ciphertext
         def decrypt(self, iv, ciphertext):
             logger.debug(
-                f'Decrypting {ciphertext} with key {self.key} and IV {iv}...')
+                f'Decrypting {ciphertext} with key {self.key.hex()} and IV {iv.hex()}...'
+            )
             aes_cipher = Cipher(AES(self.key),
                                 CBC(iv),
                                 backend=default_backend())
@@ -269,7 +270,7 @@ class AsyncRATParser:
                     padded_text) + unpadder.finalize()
             except Exception as e:
                 raise self.parent.ASyncRATParserError(
-                    f'Error decrypting ciphertext {ciphertext} with IV {iv} and key {self.key}'
+                    f'Error decrypting ciphertext {ciphertext} with IV {iv.hex()} and key {self.key.hex()}'
                 ) from e
             logger.debug(f'Decryption result: {unpadded_text}')
             return unpadded_text
@@ -324,15 +325,16 @@ class AsyncRATParser:
         def field_rva_to_offset(self, field_rva):
             text_section_metadata_offset = self.parent.data.find(
                 self.SECTION_IDENTIFIER_TEXT)
-            text_section_rva = self.parent.data[
-                text_section_metadata_offset +
-                12:text_section_metadata_offset + 16]
-            text_section_offset = self.parent.data[
-                text_section_metadata_offset +
-                20:text_section_metadata_offset + 24]
-            field_offset = field_rva - self.parent.bytes_to_int(
-                text_section_rva) + self.parent.bytes_to_int(
-                    text_section_offset)
+            if text_section_metadata_offset == -1:
+                raise self.parent.ASyncRATParserError(
+                    'Could not identify .text section metadata')
+            text_section_rva = self.parent.bytes_to_int(
+                self.parent.data[text_section_metadata_offset +
+                                 12:text_section_metadata_offset + 16])
+            text_section_offset = self.parent.bytes_to_int(
+                self.parent.data[text_section_metadata_offset +
+                                 20:text_section_metadata_offset + 24])
+            field_offset = field_rva - text_section_rva + text_section_offset
             return field_offset
 
         # Extracts the AES iteration number from the payload
@@ -427,7 +429,7 @@ class AsyncRATParser:
                          DOTALL)
             if hit is None:
                 raise self.parent.ASyncRATParserError(
-                    f'Could not extract AES key or block size')
+                    'Could not extract AES key or block size')
             # Convert key size from bits to bytes by dividing by 8
             # Note use of // instead of / to ensure integer output, not float
             key_size = self.parent.bytes_to_int(hit.groups()[0]) // 8
@@ -505,7 +507,7 @@ class AsyncRATParser:
 
     def __init__(self, file_path):
         self.file_path = file_path
-        self.data = self.get_file_data(file_path)
+        self.data = self.get_file_data()
         self.table_map = self.get_table_map()
         self.fields_map = self.get_fields_map()
         self.config_addr_map = self.get_config_address_map()
@@ -525,16 +527,16 @@ class AsyncRATParser:
 
     # Decodes a bytes object to a Unicode string, using UTF-16LE for byte values
     # with null bytes still embedded in them, and UTF-8 for all other values
-    def decode_bytes(self, bytes):
+    def decode_bytes(self, byte_str):
         result = None
         try:
-            if b'\x00' in bytes:
-                result = bytes.decode('utf-16le')
+            if b'\x00' in byte_str:
+                result = byte_str.decode('utf-16le')
             else:
-                result = bytes.decode('utf-8')
+                result = byte_str.decode('utf-8')
         except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error decoding bytes object to Unicode: {bytes}') from e
+                f'Error decoding bytes object to Unicode: {byte_str}') from e
         return result
 
     # Given a translated config containing config field names and encrypted
@@ -552,20 +554,24 @@ class AsyncRATParser:
 
             # Leave empty strings as they are
             if len(v) == 0:
+                logger.debug(
+                    f'Key: {decoded_k}, Value: {decrypted_config[decoded_k]}')
                 continue
             # Check if base64-encoded string
             try:
                 decoded_val = b64decode(v)
-            except Exception:
+            except:
                 b64_exception = True
             # If it was not base64-encoded, or if it is less than our min length
             # for ciphertext, leave the value as it is
             if b64_exception or len(decoded_val) < 48:
+                logger.debug(
+                    f'Key: {decoded_k}, Value: {decrypted_config[decoded_k]}')
                 continue
             # Otherwise, extract the IV from the 16 bytes after the HMAC
             # (first 32 bytes) and the ciphertext from the rest of the data
             # after the IV, and run the decryption
-            (iv, ciphertext) = decoded_val[32:48], decoded_val[48:]
+            iv, ciphertext = decoded_val[32:48], decoded_val[48:]
             decrypted_config[decoded_k] = self.decode_bytes(
                 self.aes_decryptor.decrypt(iv, ciphertext))
             logger.debug(
@@ -625,15 +631,15 @@ class AsyncRATParser:
         return fields_map
 
     # Given a file path, reads in and returns binary contents from that path
-    def get_file_data(self, file_path):
-        logger.debug(f'Reading contents from: {file_path}')
+    def get_file_data(self):
+        logger.debug(f'Reading contents from: {self.file_path}')
         try:
-            with open(file_path, 'rb') as fp:
+            with open(self.file_path, 'rb') as fp:
                 data = fp.read()
         except Exception as e:
             raise self.ASyncRATParserError(
-                f'Error reading from path: {file_path}') from e
-        logger.debug(f'Successfully read data')
+                f'Error reading from path: {self.file_path}') from e
+        logger.debug('Successfully read data')
         return data
 
     # Extracts the m_maskvalid value from the Tables Stream
@@ -758,7 +764,7 @@ class AsyncRATParser:
                 translated_config[field_name] = field_value
             except Exception as e:
                 raise self.ASyncRATParserError(
-                    f'Error translating RVAs {us_rva} and {strings_rva}'
+                    f'Error translating RVAs {hex(us_rva)} and {hex(strings_rva)}'
                 ) from e
         logger.debug('Successfully translated configuration')
         return translated_config
@@ -828,7 +834,7 @@ class AsyncRATParser:
         return us_val
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     ap = ArgumentParser()
     ap.add_argument(
         'file_paths',
@@ -846,6 +852,6 @@ if __name__ == "__main__":
     for fp in args.file_paths:
         try:
             print(AsyncRATParser(fp).report())
-        except Exception as e:
-            exception(f'Exception occurred for {fp}', exc_info=True)
+        except:
+            logger.exception(f'Exception occurred for {fp}', exc_info=True)
             continue
