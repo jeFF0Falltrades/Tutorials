@@ -385,20 +385,17 @@ class AsyncRATParser:
 
             # Since we already have a map of all fields, and have translated
             # config values (including Key) into translated_config, to find the
-            # key value, we take the RVA of the key, subtract the #Strings
-            # stream base RVA, and then subtract 1 to get the key's index in
-            # the field map.
-            #
-            # We then take the key field name from the field map, and look up
-            # its value in our translated config, e.g.:
+            # key value, we take the RVA of the key, look up its value in our
+            # fields_map, and then look up that same value in our translated
+            # _config
             #
             # Key RVA: 0x04000007
             # Key Field Map Index = 0x04000007 - 0x04000000 - 1 = 6
             # Key Field Name Value = fields_map[6]
             # Key Value = translated_config[fields_map[6]]
-            key_field_offset = self.parent.bytes_to_int(
-                hit.groups()[0]) - self.parent.RVA_STRINGS_BASE - 1
-            key_field_name = self.parent.fields_map[key_field_offset][0]
+            key_field_rva = self.parent.bytes_to_int(hit.groups()[0])
+            key_field_name = self.parent.strings_rva_to_strings_val(
+                key_field_rva)
             key_val = self.parent.translated_config[key_field_name]
             logger.debug(f'AES encoded key value found: {key_val}')
             try:
@@ -781,22 +778,18 @@ class AsyncRATParser:
         return dumps(result_dict)
 
     # Given an RVA from the #Strings stream, extracts the value of the string
-    # at that RVA
+    # at that RVA using our extracted Fields map
     def strings_rva_to_strings_val(self, strings_rva):
-        strings_start = self.get_stream_start(self.STREAM_IDENTIFIER_STRINGS)
         # Index of value in fields_map = RVA - #Strings base RVA - 1, e.g.:
         #
         # RVA: 0x04000001
         # Index = 0x04000001 - 0x04000000 - 1 = 0
         val_index = strings_rva - self.RVA_STRINGS_BASE - 1
-        # Get offset from #Strings stream start from fields map and add it to
-        # #Strings stream base to get the file offset of the string
         try:
-            val_offset = self.fields_map[val_index][1] + strings_start
+            strings_val = self.fields_map[val_index][0]
         except Exception as e:
             raise self.ASyncRATParserError(
                 f'Could not retrieve string from RVA {strings_rva}') from e
-        strings_val = self.get_string_from_offset(val_offset)
         return strings_val
 
     # Given an RVA from the #US stream, extracts the value of the string
