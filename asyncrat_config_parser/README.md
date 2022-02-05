@@ -1,6 +1,6 @@
 # AsyncRAT Configuration Parser
 ## YouTube Video
-* Placeholder
+* https://youtu.be/xV0x7kNZ_Yc
 
 ## YARA Rule for Hunting
 * https://github.com/jeFF0Falltrades/YARA-Signatures/blob/master/Broadbased/asyncrat.yar
