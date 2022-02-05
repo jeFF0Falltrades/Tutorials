@@ -5,7 +5,11 @@
 # Author: jeFF0Falltrades
 #
 # A configuration parser for the AsyncRAT malware family
-# written in pure Python (3.x).
+# written in Python (3.x).
+#
+# This module requires the pyca/cryptography library:
+# https://cryptography.io/en/latest/
+# pip install cryptography
 #
 # Be aware that this parser was written as part of a tutorial to be used with
 # the associated video, and prioritizes explicitness and clarity over
