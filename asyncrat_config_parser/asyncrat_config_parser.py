@@ -770,8 +770,7 @@ class AsyncRATParser:
         logger.debug('Successfully translated configuration')
         return translated_config
 
-    # Returns a JSON dump of metadata and the decrypted configuration for a
-    # payload
+    # Returns metadata and the decrypted configuration for a payload
     def report(self):
         result_dict = {
             'file_path': self.file_path,
@@ -779,7 +778,7 @@ class AsyncRATParser:
             'aes_salt': self.aes_decryptor.salt.hex(),
             'config': self.config
         }
-        return dumps(result_dict)
+        return result_dict
 
     # Given an RVA from the #Strings stream, extracts the value of the string
     # at that RVA using our extracted Fields map
@@ -846,9 +845,14 @@ if __name__ == '__main__':
         basicConfig(level=DEBUG)
     else:
         basicConfig(level=WARNING)
+
+    decrypted_configs = []
     for fp in args.file_paths:
         try:
-            print(AsyncRATParser(fp).report())
+            decrypted_configs.append(AsyncRATParser(fp).report())
         except:
             logger.exception(f'Exception occurred for {fp}', exc_info=True)
             continue
+
+    if len(decrypted_configs) > 0:
+        print(dumps(decrypted_configs))
