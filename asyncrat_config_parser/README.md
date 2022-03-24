@@ -10,6 +10,12 @@
 pip install cryptography
 ```
 
+or
+
+```
+pip install -r requirements.txt
+```
+
 ## Usage
 ```
 usage: asyncrat_config_parser.py [-h] [-d] file_paths [file_paths ...]
