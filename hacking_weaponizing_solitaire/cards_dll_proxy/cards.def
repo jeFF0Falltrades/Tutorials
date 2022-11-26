@@ -1,0 +1,5 @@
+EXPORTS
+cdtDraw=cards_original.dll.cdtDraw @3
+cdtDrawExt=cards_original.dll.cdtDrawExt @4
+cdtAnimate=cards_original.dll.cdtAnimate @2
+cdtTerm=cards_original.dll.cdtTerm @6
