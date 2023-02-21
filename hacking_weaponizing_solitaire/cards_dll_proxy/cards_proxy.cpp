@@ -4,7 +4,7 @@ Author: jeFF0Falltrades
 From the "Reverse Engineering and Weaponizing XP Solitaire" tutorial:
    GitHub: https://github.com/jeFF0Falltrades/Tutorials/tree/master/hacking_weaponizing_solitaire
 
-   YouTube:
+   YouTube: https://www.youtube.com/watch?v=ZmPArvsSii4
 
 MIT License
 
