@@ -30,4 +30,4 @@ jobs:
             author_name: wall_of_fame_bot
             author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
             message: 'Automated Wall of Fame Update'
-            add: $TARGET_FILE
+            add: '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'
