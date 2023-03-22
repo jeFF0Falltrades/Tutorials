@@ -20,9 +20,9 @@ jobs:
           - uses: actions/checkout@v3.3.0 
           - name: Add name to wall
             run: "sed -i '$i${{ github.event.inputs.name }}' ${{ format('{0}/{1}', $TARGET_DIR, $TARGET_FILE }}"
-
-          - uses: EndBug/add-and-commit@v9.1.1
+            
           - name: Commit changes
+          - uses: EndBug/add-and-commit@v9.1.1
             with:
               author_name: wall_of_fame_bot
               author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
