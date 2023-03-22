@@ -26,7 +26,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Add name to wall
-        run: "sed -i '$i${{ github.event.inputs.name }} - ${github.event.inputs.date}' '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'"
+        run: "sed -i '$i${{ github.event.inputs.name }} - ${{ github.event.inputs.date }}' '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'"
 
       - name: Commit changes
         uses: EndBug/add-and-commit@v9.1.1
