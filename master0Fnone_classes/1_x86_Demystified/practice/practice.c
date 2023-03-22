@@ -5,7 +5,7 @@ From the master0Fnone Class Reverse Engineering Series:
 
    GitHub: https://github.com/jeFF0Falltrades/Tutorials/tree/master/master0Fnone_classes/1_x86_Demystified
 
-   YouTube:
+   YouTube: https://youtu.be/ZXoW5iqbFJE
 
 MIT License
 

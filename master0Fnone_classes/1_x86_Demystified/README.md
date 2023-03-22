@@ -8,9 +8,11 @@
 - Reverse that practice program in Ghidra to practice identifying these structures and instructions
 - Challenge you to take what you've learned and get yourself onto the "Wall of Fame" by finding the hidden flag in the included "CrackMe" program!
 
-## YouTube Video
+## YouTube Videos
 
--
+- [Part 1](https://youtu.be/ZXoW5iqbFJE)
+- [Part 2]()
+- [Part 3]()
 
 ## Directory List & Description
 
