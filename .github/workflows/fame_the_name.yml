@@ -2,11 +2,14 @@ name: Fame the Name
 on:
   workflow_dispatch:
     inputs:
+      directory:
+        description: "Directory of the Wall of Fame file"
+        required: true
       name:
         description: "Name to add"
         required: true
-      directory:
-        description: "Directory of the Wall of Fame file"
+      date:
+        description: "Date of entry"
         required: true
 
 env:
@@ -14,20 +17,21 @@ env:
   TARGET_DIR: ${{ github.event.inputs.directory }}
 
 jobs:
-    run:
-      runs-on: ubuntu-latest
-      steps: 
-        - uses: actions/checkout@v3.3.0 
-          with:
-            repository: ${{ github.event.pull_request.head.repo.full_name }}
-            ref: ${{ github.event.pull_request.head.ref }}
-        - name: Add name to wall
-          run: "sed -i '$i${{ github.event.inputs.name }}' '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'"
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3.3.0
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
 
-        - name: Commit changes
-          uses: EndBug/add-and-commit@v9.1.1
-          with:
-            author_name: wall_of_fame_bot
-            author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
-            message: 'Automated Wall of Fame Update'
-            add: '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'
+      - name: Add name to wall
+        run: "sed -i '$i${{ github.event.inputs.name }} - ${github.event.inputs.date}' '${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}'"
+
+      - name: Commit changes
+        uses: EndBug/add-and-commit@v9.1.1
+        with:
+          author_name: wall_of_fame_bot
+          author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
+          message: "Automated Wall of Fame Update"
+          add: "${{ env.TARGET_DIR }}/${{ env.TARGET_FILE }}"
