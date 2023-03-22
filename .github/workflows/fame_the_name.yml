@@ -14,16 +14,9 @@ env:
   TARGET_DIR: ${{ github.event.inputs.directory }}
 
 jobs:
-  run:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Add name to wall
-      - uses: actions/checkout@v3.3.0
-        run: "sed -i '$i${{ github.event.inputs.name }}' ${{ format('{0}/{1}', $TARGET_DIR, $TARGET_FILE }}"
-      - name: Commit changes
-        uses: EndBug/add-and-commit@v9.1.1
-        with:
-          author_name: wall_of_fame_bot
-          author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
-          message: "Automated Wall of Fame Update"
-          add: ${{ format('{0}/{1}', $TARGET_DIR, $TARGET_FILE }}
+    hello:
+        runs-on: ubuntu-latest
+
+        steps:
+        - name: Hello Step
+          run: echo "Hello ${{ github.event.inputs.name }}"
