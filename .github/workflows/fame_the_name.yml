@@ -25,7 +25,7 @@ jobs:
           run: "sed -i '$i${{ github.event.inputs.name }}' ${{ format('{0}/{1}', $TARGET_DIR, $TARGET_FILE }}"
 
         - name: Commit changes
-        - uses: EndBug/add-and-commit@v9.1.1
+          uses: EndBug/add-and-commit@v9.1.1
           with:
             author_name: wall_of_fame_bot
             author_email: 8444166+jeFF0Falltrades@users.noreply.github.com
