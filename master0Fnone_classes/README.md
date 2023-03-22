@@ -4,4 +4,4 @@ The jeFF0Falltrades master0Fnone Class series is a collection of free, long-form
 
 ### Episode List
 
-1. [x86 Assembly Demystified](/1_x86_demystified/): Basic overview of the Language Processing System, x86 assembly language, Ghidra, x64dbg, and a CrackMe challenge (with Wall of Fame)
+1. [x86 Assembly Demystified](https://github.com/jeFF0Falltrades/Tutorials/tree/master/master0Fnone_classes/1_x86_Demystified/): Basic overview of the Language Processing System, x86 assembly language, Ghidra, x64dbg, and a CrackMe challenge (with Wall of Fame)
