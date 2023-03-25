@@ -2000,7 +2000,7 @@ void struct_your_stuff()
     printf("\t*thing_two.px == %d\n\n", *(thing_two.px));
 }
 
-Node *insert_at_start_of_ll(Node *head, int data)
+Node *insert_at_start_of_ll(Node *next, int data)
 {
     Node *new_node = (Node *)malloc(sizeof(Node));
     if (!new_node)
@@ -2013,7 +2013,7 @@ Node *insert_at_start_of_ll(Node *head, int data)
                   ;
     }
     new_node->data = data;
-    new_node->next = head;
+    new_node->next = next;
     return new_node;
 }
 
@@ -2056,6 +2056,11 @@ void linked_list_not_to_be_confused_with_zeldad_list()
 # 307 "practice.c"
                        ;
     }
+    head = current = 
+# 309 "practice.c" 3
+                    ((void *)0)
+# 309 "practice.c"
+                        ;
 }
 
 int main()

@@ -948,7 +948,9 @@ L70:
 L69:
 	cmpl	$0, -12(%ebp)
 	jne	L70
-	nop
+	movl	$0, -12(%ebp)
+	movl	-12(%ebp), %eax
+	movl	%eax, -16(%ebp)
 	nop
 	leave
 	.cfi_restore 5
