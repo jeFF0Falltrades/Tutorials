@@ -11,7 +11,7 @@
 ## YouTube Videos
 
 - [Part 1](https://youtu.be/ZXoW5iqbFJE)
-- [Part 2]()
+- [Part 2](https://youtu.be/d-zxyLQlaYw)
 - [Part 3]()
 
 ## Directory List & Description
