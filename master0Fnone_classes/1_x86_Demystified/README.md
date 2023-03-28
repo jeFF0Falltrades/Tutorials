@@ -12,7 +12,7 @@
 
 - [Part 1](https://youtu.be/ZXoW5iqbFJE)
 - [Part 2](https://youtu.be/d-zxyLQlaYw)
-- [Part 3]()
+- [Part 3](https://youtu.be/g-8Vk7Jik9o)
 
 ## Directory List & Description
 
