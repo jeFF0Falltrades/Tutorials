@@ -34,4 +34,5 @@ m4ra - 16-APR-2023
 hashdmp - 18-APR-2023
 UrandomJoe - 18-APR-2023
 M0uhab-0xRE - 18-APR-2023
+NightQuest - 19-APR-2023
 ```
