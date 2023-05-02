@@ -34,7 +34,7 @@ m4ra - 16-APR-2023
 hashdmp - 18-APR-2023
 UrandomJoe - 18-APR-2023
 M0uhab-0xRE - 18-APR-2023
-NightQuest - 19-APR-2023
+NightQuest - 19-APR-2023 (Write-Up: https://subtle.ninja/Tech/Reverse+Engineering/jeFF0Falltrade's+x86+Demystified)
 ItsProfessional - 25-APR-2023
 W_Louis - 27-APR-2023
 pkats15 - 30-APR-2023
