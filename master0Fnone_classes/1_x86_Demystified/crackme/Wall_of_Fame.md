@@ -50,4 +50,5 @@ Promikron - 02-AUG-2023
 wRsTillHeReAlhamdulillah - 08-AUG-2023
 koolaidxk1d - 10-AUG-2023
 dundorma - 15-AUG-2023
+Cuco - 15-AUG-2023
 ```
