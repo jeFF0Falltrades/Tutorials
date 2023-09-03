@@ -54,4 +54,5 @@ Cuco - 15-AUG-2023
 Ormiz - 19-AUG-2023
 MeowFeeder - 20-AUG-2023
 logolyte - 25-AUG-2023
+Isaac - 02-SEP-2023
 ```
