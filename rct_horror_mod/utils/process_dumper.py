@@ -2,7 +2,7 @@
 
 # From the video "Modding RollerCoaster Tycoon into a Peele Horror Film":
 
-#    GitHub: https://github.com/jeFF0Falltrades/Tutorials/tree/main/rct_horror_mod
+#    GitHub: https://github.com/jeFF0Falltrades/Tutorials/tree/master/rct_horror_mod
 
 #    YouTube: https://www.youtube.com/watch?v=1MOrjGZ4hbo
 
