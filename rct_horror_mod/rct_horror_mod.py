@@ -125,10 +125,10 @@ def parse_args():
 # Since all of the calling functions share a similar format, use a Python
 # dict to send the args to the correct function based on the command used
 FUNC_DISPATCH = {
-    "bitmaps": lambda args: bitmap_extract(args),
-    "dump": lambda args: dib_palette_dump(args),
-    "patch": lambda args: patch(args),
-    "show": lambda args: dib_palette_dump(args),
+    "bitmaps": bitmap_extract,
+    "dump": dib_palette_dump,
+    "patch": patch,
+    "show": dib_palette_dump,
 }
 
 if __name__ == "__main__":

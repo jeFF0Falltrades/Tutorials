@@ -29,7 +29,7 @@
 # SOFTWARE.
 import struct
 
-from structs.bitmap import MODE_RGB
+from structs.bitmap import BITMAP
 from structs.bitmapinfoheader import BITMAPINFOHEADER
 from PIL import Image
 from structs.rgbquad import RGBQUAD
@@ -138,7 +138,7 @@ class ProcessDumper:
         save_path="img.bmp",
         show_only=False,
     ):
-        img = Image.new(MODE_RGB, img_size)
+        img = Image.new(BITMAP.MODE_RGB, img_size)
         img.putdata(img_data)
         if crop is not None:
             img = img.crop(crop)

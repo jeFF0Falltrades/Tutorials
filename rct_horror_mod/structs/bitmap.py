@@ -32,11 +32,6 @@ from struct import iter_unpack
 from structs.rgbquad import RGBQUAD
 from typing import List, Tuple
 
-FLAG_DIRECT = 0x1
-FLAG_COMPACT = 0x5
-FLAG_PALETTE = 0x8
-MODE_RGB = "RGB"
-
 
 # The structure of bitmaps used by RCT was sourced from:
 # https://tid.rctspace.com/csg/csg.html
@@ -48,6 +43,10 @@ MODE_RGB = "RGB"
 # 3. Color palettes consisting of RGBQUAD structures
 @dataclass
 class BITMAP:
+    FLAG_DIRECT = 0x1
+    FLAG_COMPACT = 0x5
+    FLAG_PALETTE = 0x8
+    MODE_RGB = "RGB"
     width: int
     height: int
     data: List[Tuple[int, int, int]]
@@ -56,9 +55,9 @@ class BITMAP:
     @classmethod
     def generate(cls, tgrecord, palette, color_table_data):
         generators = {
-            FLAG_PALETTE: BITMAP.generate_palette,
-            FLAG_COMPACT: BITMAP.generate_compact,
-            FLAG_DIRECT: BITMAP.generate_direct,
+            BITMAP.FLAG_PALETTE: BITMAP.generate_palette,
+            BITMAP.FLAG_COMPACT: BITMAP.generate_compact,
+            BITMAP.FLAG_DIRECT: BITMAP.generate_direct,
         }
         try:
             return generators[tgrecord.Flags](

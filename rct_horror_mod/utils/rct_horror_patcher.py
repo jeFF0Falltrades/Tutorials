@@ -72,9 +72,8 @@ REPLACEMENT_PATCH_CALL = ("FF 14 AD A4 70 42 00", "B8 %s FF D0")
 REPLACEMENT_SHELLCODE = (
     "03 00 02 00 01 00" + "00" * 80,
     (
-        "B0 00 B1 00 FF 14 AD A4 70 42 00 60 6A 00 6A 00 6A 00 68 %s FF 15 14"
-        " B3 78 00 6A 00 6A 00 6A 00 68 %s FF 15 14 B3 78 00 B8 96 8B 43 00 FF"
-        " D0 61 C3"
+        "FF 14 AD A4 70 42 00 60 6A 00 6A 00 6A 00 68 %s FF 15 14 B3 78 00 6A"
+        " 00 6A 00 6A 00 68 %s FF 15 14 B3 78 00 B8 96 8B 43 00 FF D0 61 C3"
     ),
 )
 
@@ -230,8 +229,8 @@ class RCTHorrorPatcher:
 
     # Write the mod shellcode to the DATASEG section
     def write_shellcode(self):
-        self.offset_shellcode = self.data.find(
-            bytes.fromhex(REPLACEMENT_SHELLCODE[0])
+        self.offset_shellcode = (
+            self.data.find(bytes.fromhex(REPLACEMENT_SHELLCODE[0])) + 8
         )
         if self.offset_shellcode == -1:
             raise Exception("Could not find shellcode placeholder offset")

@@ -28,13 +28,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 import logging
-import structs.bitmap as bitmap
 from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from os import mkdir
 from os.path import isdir, join
 from PIL import Image
 from struct import iter_unpack
+from structs.bitmap import BITMAP
 from structs.tgraphicrecord import TGraphicRecord
 
 
@@ -43,8 +43,8 @@ from structs.tgraphicrecord import TGraphicRecord
 # to write the resulting bitmap, and the color entry data from CSG1.dat
 def bitmap_dump_thread_safe(bmp_record, palette, path_output, raw_csg1_data):
     try:
-        bmp = bitmap.BITMAP.generate(bmp_record, palette, raw_csg1_data)
-        img = Image.new(bitmap.MODE_RGB, (bmp.width, bmp.height))
+        bmp = BITMAP.generate(bmp_record, palette, raw_csg1_data)
+        img = Image.new(BITMAP.MODE_RGB, (bmp.width, bmp.height))
         img.putdata(bmp.data)
         img.save(join(path_output, bmp.filename))
         return True
