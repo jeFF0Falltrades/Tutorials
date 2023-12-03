@@ -14,7 +14,9 @@ Enjoy and please leave questions and feedback on [YouTube](https://www.youtube.c
 
 For a full walkthrough of how this mod was created, and a general introduction to reverse engineering and game patching, see the accompanying videos (specifically Part 2 for the code overview):
 
-[Modding RollerCoaster Tycoon into a Peele Horror Film](https://www.youtube.com/watch?v=1MOrjGZ4hbo)
+Part 1: [Modding RollerCoaster Tycoon into a Peele Horror Film](https://www.youtube.com/watch?v=1MOrjGZ4hbo)
+
+Part 2: [[Game Mod Code Deep Dive] Modding RollerCoaster Tycoon into a Peele Horror Film](https://youtu.be/PYOUgevLRfc)
 
 # Installation
 
