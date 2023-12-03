@@ -229,6 +229,7 @@ class RCTHorrorPatcher:
 
     # Write the mod shellcode to the DATASEG section
     def write_shellcode(self):
+        # Add 8 to skip over \x03\x00...\x00\x00 at shellcode region
         self.offset_shellcode = (
             self.data.find(bytes.fromhex(REPLACEMENT_SHELLCODE[0])) + 8
         )

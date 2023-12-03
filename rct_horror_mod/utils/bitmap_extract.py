@@ -66,7 +66,7 @@ def bitmap_extract(args):
 
     # Open and parse the color palette file
     logging.info(f"Parsing palette from {args.path_palette}...")
-    img = Image.open(args.path_palette).convert("RGB")
+    img = Image.open(args.path_palette).convert(BITMAP.MODE_RGB)
     palette = list(img.getdata())
 
     # Load bitmap records from CSG1i.dat into a list
@@ -106,5 +106,6 @@ def bitmap_extract(args):
         )
 
     logging.info(
-        f"Successfully extracted {success_count} bitmaps to {args.path_outdir}"
+        f"Successfully extracted {success_count} of"
+        f" {len(bitmap_records)} bitmaps to {args.path_outdir}"
     )

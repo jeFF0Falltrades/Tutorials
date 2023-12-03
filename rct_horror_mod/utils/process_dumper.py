@@ -99,9 +99,10 @@ class ProcessDumper:
         dib_data = self.target_process.read_memory(
             self.ptr_dib,
             (
-                self.bitmap_info_header.biWidth
-                * self.bitmap_info_header.biHeight
-                * -1
+                abs(
+                    self.bitmap_info_header.biWidth
+                    * self.bitmap_info_header.biHeight
+                )
             ),
         )
         return [self.color_palette[idx] for idx in dib_data]
@@ -121,7 +122,7 @@ class ProcessDumper:
         self.generate_img(
             (
                 self.bitmap_info_header.biWidth,
-                self.bitmap_info_header.biHeight * -1,
+                abs(self.bitmap_info_header.biHeight),
             ),
             self.dib,
             crop=(0, 0, self.resolution_x, self.resolution_y),
