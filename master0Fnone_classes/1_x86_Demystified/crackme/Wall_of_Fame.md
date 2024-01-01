@@ -67,4 +67,5 @@ Saiyan_Sai - 26-OCT-2023
 4n3c3d - 27-OCT-2023
 neverwasd - 30-NOV-2023 (Write-Up: https://medium.com/@neverwasd/cracking-jeff0falltrades-master0fnone-class-de9848e67375)
 Ghost - 12-DEC-2023
+Marco G - 01-JAN-2024
 ```
