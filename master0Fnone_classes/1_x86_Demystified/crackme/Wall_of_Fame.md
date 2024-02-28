@@ -70,4 +70,5 @@ Ghost - 12-DEC-2023
 Marco G - 01-JAN-2024
 pugachev - 02-JAN-2024
 ClarkIV - 04-JAN-2024 (Write-Up: https://clarkiv.dev/posts/jeFF0Falltrades-crackme/)
+Dander - 28-FEB-2024
 ```
