@@ -1,4 +1,11 @@
 # AsyncRAT Configuration Parser
+## Important Note
+An updated and more robust version of this parser has been published at: 
+
+* https://github.com/jeFF0Falltrades/rat_king_parser 
+
+This repository and its accompanying video are still very valuable for those learning malware analysis and tool automation, but the Rat King parser is considered more stable for production use.
+
 ## YouTube Video
 * https://youtu.be/xV0x7kNZ_Yc
 
