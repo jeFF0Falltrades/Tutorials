@@ -9,8 +9,8 @@
 
 ## Class Videos
 
-- [Part 1](https://youtu.be/ELPWeRXxnSE)
-- [Part 2]()
+- [Part 1: Building Our Malware Analysis Lab for Free](https://youtu.be/ELPWeRXxnSE)
+- [Part 2: Analyzing Real Malware in our New Sandbox](https://youtu.be/PffR5DCzAQI)
 
 ## Directory List & Description
 
@@ -26,7 +26,7 @@
 
 ## Wall of Fame Submission Instructions
 
-1. Download the CrackMe program ZIP (`crackme.zip`) and transfer it into your lab environment (see the video for examples of doing this), then extract `crackme.exe`
+1. Download the CrackMe program ZIP (`crackme.zip`) and transfer it into your lab environment (see the video for examples of doing this, if needed), then extract `crackme.exe`
 1. Use your lab tools to analyze the file as much as you can
 1. Open [this Google form](https://forms.gle/nE2yFZowxhCKBPw37) to input your answers to the challenge questions and provide the name you want on the Wall of Fame
 1. Check back a few minutes after your form submission, and the Wall of Fame file in the `crackme` folder should be updated with your name and the date of your achievement
