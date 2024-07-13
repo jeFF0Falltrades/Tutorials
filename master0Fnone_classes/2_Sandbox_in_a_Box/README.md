@@ -38,3 +38,6 @@ crackme.exe SHA256 Hash: `bb203ab338be9968ba5ecbdf1b53633eb15d9be82b7bc32d4e4ade
 ## Let Me Know What You Think, and Share with Those Who Yearn to Learn!
 
 Enjoy and please leave questions and feedback on [YouTube](https://www.youtube.com/@jeff0falltrades) or [Mastodon](https://infosec.exchange/@jeFF0Falltrades)!
+
+## Edits and Updates
+* Thanks to @BrakeSec for the suggestion, I added a simple helper script so you don't have to worry about commenting out the netplan configuration yourself: `toggle_netplan.sh`
