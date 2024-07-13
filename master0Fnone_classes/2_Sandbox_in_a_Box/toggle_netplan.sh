@@ -3,11 +3,11 @@
 # Author: jeFF0Falltrades
 #
 # toggle_netplan.sh automates the process of swapping the netplan configuration
-# of our "Sandbox in a Box" Remnux machine so that you can swap between the
+# of our "Sandbox in a Box" Remnux machine so that you can toggle between the
 # configuration used to run upgrades/updates, and the configuration used to
-# route the machine for use in the internal (virtual) network.
+# prepare the machine for use in the internal (virtual) network.
 #
-# REMEMBER: Run this as sudo, and remember to switch your VM network as well
+# REMEMBER: To run this as root, and switch your VM network afterwards as well
 #
 # MIT License
 #
@@ -65,7 +65,7 @@ network:
 EOF
 )
 
-if grep -q "dhcp4: yes" "/etc/netplan/01-netcfg.yaml"; then
+if grep -q "dhcp4: yes" "$NETPLAN_CONFIG"; then
     echo "$disable_internet" > "$NETPLAN_CONFIG"
     echo "Swapped to internal network configuration"
 else
