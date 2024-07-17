@@ -67,10 +67,11 @@ EOF
 
 if grep -q "dhcp4: yes" "$NETPLAN_CONFIG"; then
     echo "$disable_internet" > "$NETPLAN_CONFIG"
-    echo "Swapped to internal network configuration"
+    msg="Swapped to internal network configuration"
 else
     echo "$enable_internet" > "$NETPLAN_CONFIG"
-    echo "Swapped to NAT configuration"
+    msg="Swapped to NAT configuration"
 fi
 
 netplan apply
+echo $msg
