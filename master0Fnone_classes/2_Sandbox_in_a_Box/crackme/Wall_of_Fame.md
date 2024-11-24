@@ -10,5 +10,5 @@ Venkata Raju Putra - mrpvr - 03-AUG-2024
 garr3ttmj - 04-AUG-2024 (Write-Up: https://github.com/garr3ttmjo/Writeups/blob/main/Sandbox%20in%20a%20Box/README.md)
 Moshe - 12-AUG-2024
 Paliak - 27-OCT-2024
-K0enM - 21-NOV-2024
+K0enM - 21-NOV-2024 (Write-Up: https://www.koenmolenaar.nl/write-ups/jeff0falltrades-sandbox-crackme/)
 ```
