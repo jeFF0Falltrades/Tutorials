@@ -90,4 +90,5 @@ mgcr - 30-AUG-2024
 SkilluDev - 27-SEP-2024
 johnnnathan - 21-NOV-2024
 K0enM - 24-NOV-2024
+HarukoCinder - 30-DEC-2024
 ```
