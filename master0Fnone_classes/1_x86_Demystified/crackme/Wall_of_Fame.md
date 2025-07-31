@@ -90,4 +90,8 @@ mgcr - 30-AUG-2024
 SkilluDev - 27-SEP-2024
 johnnnathan - 21-NOV-2024
 K0enM - 24-NOV-2024
+HarukoCinder - 30-DEC-2024
+JoshuaKlassen - 27-APR-2025
+nodiuus  - 12-MAY-2025
+kmschr - 23-MAY-2025
 ```
