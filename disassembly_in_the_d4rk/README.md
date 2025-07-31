@@ -7,3 +7,4 @@ This directory contains resources from each episode, including any code/scripts,
 ## Episode List
 
 1. Reverse Engineering/Bashing Splinter Cell to see What Falls Out (*Tom Clancy's Splinter Cell*)
+2. Using AI to Save Every Sim From Your Cruelty (*The Sims Legacy Edition*)
