@@ -97,4 +97,5 @@ kmschr - 23-MAY-2025
 ukase - 22-AUG-2025
 dyna_spinner64 - 15-NOV-2025
 rootxsudip - 22-NOV-2025
+felpguima - 16-DEC-2025
 ```
