@@ -60,13 +60,9 @@ class BITMAP:
             BITMAP.FLAG_DIRECT: BITMAP.generate_direct,
         }
         try:
-            return generators[tgrecord.Flags](
-                tgrecord, palette, color_table_data
-            )
+            return generators[tgrecord.Flags](tgrecord, palette, color_table_data)
         except KeyError:
-            raise Exception(
-                f"Error unpacking BITMAP: Unknown flag {tgrecord.Flags}"
-            )
+            raise Exception(f"Error unpacking BITMAP: Unknown flag {tgrecord.Flags}")
 
     # Extract direct bitmaps, which simply consist of indices into the color
     # palette
@@ -92,51 +88,57 @@ class BITMAP:
     def generate_compact(cls, tgrecord, palette, color_table_data):
         TRANSPARENT_ELEMENT = (0, 0, 0)
         try:
-            # Read the header containing the offsets to each scan line row
-            # This is 2 x the height of the image as each offset is 2 bytes
-            table_header = color_table_data[
-                tgrecord.StartAddress : tgrecord.StartAddress
-                + (2 * tgrecord.Height)
-            ]
-            # iter_unpack returns a tuple, of which we only need the first
-            # element
-            table_row_offsets = [
-                offset[0] for offset in iter_unpack("<H", table_header)
-            ]
-            data = []
-            last_element = True
-            scan_line = []
-            # For each scan line
-            for offset in table_row_offsets:
-                # If we have reached the last element, write the current scan
-                # line's elements to data, and create a new, blank scan line
-                # of transparent elements
-                if last_element:
-                    data.extend(scan_line)
-                    scan_line = [TRANSPARENT_ELEMENT] * tgrecord.Width
-                element_start = tgrecord.StartAddress + offset
-                # The first byte of the scan line data is a meta byte, whose
-                # most-significant bit (MSB) indicates this is the last element
-                # if it is set, and the remainder indicates the size of this
-                # scan line, i.e. how many non-transparent elements it contains
-                meta_byte = color_table_data[element_start]
-                element_size = meta_byte & 0x7F
-                # Add 2 here to skip over meta byte and offset-from-left byte
-                element_end = element_start + 2 + element_size
-                # The byte after the meta byte is an offset from the left edge
-                # of the bitmap, i.e. how many transparent elements should
-                # precede the first non-transparent element
-                offset_from_left = color_table_data[element_start + 1]
-                element_data = color_table_data[element_start + 2 : element_end]
-                for element_idx, color_idx in enumerate(element_data):
-                    # Index into the input palette to decide which color this
-                    # element will have
-                    scan_line[offset_from_left + element_idx] = palette[
-                        color_idx
-                    ]
-                # Check if this is the last element in this scan line by
-                # checking the MSB of the meta byte
-                last_element = meta_byte & 0x80
+            """
+            Corrected multi-segment 8bpp RLE sprite unpacker.
+
+            Why key changes exist:
+            - Each scanline may contain multiple RLE segments.
+            - MSB of meta byte indicates LAST segment (stop).
+            - Decoder must walk segments until the MSB=1 segment.
+            """
+            TRANSPARENT_ELEMENT = (0, 0, 0)
+
+            # Read 2 bytes per row offset
+            header_start = tgrecord.StartAddress
+            header_end = header_start + (2 * tgrecord.Height)
+            table_header = color_table_data[header_start:header_end]
+
+            # Build list of row-relative offsets
+            table_row_offsets = [off[0] for off in iter_unpack("<H", table_header)]
+
+            data = []  # final image pixel array
+
+            # Decode each row
+            for row_offset in table_row_offsets:
+                scan_line = [TRANSPARENT_ELEMENT] * tgrecord.Width
+
+                # Pointer to first segment of this row
+                ptr = tgrecord.StartAddress + row_offset
+
+                while True:
+                    meta = color_table_data[ptr]
+                    size = meta & 0x7F
+                    last_segment = (meta & 0x80) != 0  # stop when 1
+
+                    left = color_table_data[ptr + 1]  # horizontal offset
+                    pixel_start = ptr + 2
+                    pixel_end = pixel_start + size
+                    segment_pixels = color_table_data[pixel_start:pixel_end]
+
+                    # Paint non-transparent segment into row
+                    for i, color_idx in enumerate(segment_pixels):
+                        scan_line[left + i] = palette[color_idx]
+
+                    # Advance pointer by segment length
+                    ptr = pixel_end
+
+                    if last_segment:
+                        break
+
+                # Completed scanline → append to output buffer
+                data.extend(scan_line)
+
+            # Return constructed image object
             return cls(
                 tgrecord.Width,
                 tgrecord.Height,
@@ -144,8 +146,8 @@ class BITMAP:
                 f"{tgrecord.StartAddress}_{hex(tgrecord.StartAddress)}.bmp",
             )
 
-        except Exception:
-            raise Exception("Error unpacking compact BITMAP")
+        except Exception as e:
+            raise Exception(f"Error unpacking compact BITMAP: {e}")
 
     # Extract palette bitmaps, which are made up of RGB color triads in
     # "Blue, Green, Red" order, applied to an identity palette
@@ -167,9 +169,7 @@ class BITMAP:
             # Turn palette_entries into a list of [(B,G,R), (B,G,R)..], then
             # convert to RGBQUAD structs
             for idx, tup in enumerate(list(zip(*[iter(palette_entries)] * 3))):
-                palette_data[tgrecord.xOffset + idx] = RGBQUAD.generate(
-                    tup
-                ).as_tuple()
+                palette_data[tgrecord.xOffset + idx] = RGBQUAD.generate(tup).as_tuple()
             return cls(
                 PALETTE_SIZE[0],
                 PALETTE_SIZE[1],
