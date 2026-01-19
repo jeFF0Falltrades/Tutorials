@@ -99,4 +99,5 @@ dyna_spinner64 - 15-NOV-2025
 rootxsudip - 22-NOV-2025
 felpguima - 16-DEC-2025
 reversemaster3500 - 29-DEC-2025
+PLOTO - 19-JAN-2026
 ```
