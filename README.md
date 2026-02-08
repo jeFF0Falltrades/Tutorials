@@ -6,6 +6,7 @@
 - hacking_weaponizing_solitaire: Reverse Engineering and Weaponizing XP Solitaire (with Video Tutorial)
 - rct_full_res: Roller Coaster Tycoon (1999) Full Resolution Game Patch (with Video Tutorial)
 - rct_horror_mod: Roller Coaster Tycoon (1999) Mod and Tutorial on Graphics Manipulation & Shellcode
+- tie-dye-chain-attack: A toy game used to test GPT-5 + GhidraMCP reverse engineering capabilities
 
 ## jeFF0Falltrades master0Fnone Classes
 
