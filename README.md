@@ -14,6 +14,12 @@ The jeFF0Falltrades master0Fnone Class series is a collection of free, long-form
 
 See the README in this directory for all available classes.
 
+## Disassembly in the D4rk
+
+A YouTube series where we blindly reverse engineer games and other software.
+
+See the README in this directory for all available episodes.
+
 ## Machine Learning
 
 - simple_transaction_classifier: Simple Bank/Credit Card Transaction Classification Tool
